@@ -3,8 +3,10 @@ import requests
 import sys
 import time
 from typing import Set, Dict
+import click
 
 class URLShortener:
+
     def __init__(self, rate_limit_delay: float = 0.1):
         """
         Initialize URL shortener with rate limiting
@@ -91,8 +93,11 @@ class URLShortener:
                     else:
                         print(f"Warning: Unexpected response for {url}: {shortened}")
                         return url
-                        
-                elif response.status_code == 429:
+
+                # Check for rate limit
+                # The status code according to https://is.gd/apishorteningreference.php
+                # is 501 when rate limit has been exceeded
+                elif response.status_code == 502:
                     # Rate limited, wait longer
                     wait_time = (attempt + 1) * 2
                     print(f"Rate limited. Waiting {wait_time} seconds before retry...")
@@ -146,21 +151,18 @@ class URLShortener:
         for shortened, original in results.items():
             print(f"{shortened}, {original}")
 
-def main():
+@click.command()
+@click.option('--filename', default="urls.txt", help='Path to file with URLs')
+
+def main(filename: str):
     """Main function"""
-    if len(sys.argv) != 2:
-        print("Usage: python url_shortener.py <filename>")
-        print("Example: python url_shortener.py urls.txt")
-        sys.exit(1)
-    
-    filename = sys.argv[1]
-    
+
     # Initialize shortener with rate limiting
     shortener = URLShortener(rate_limit_delay=0.2)
     
     # Read URLs from file
     urls = shortener.read_urls_from_file(filename)
-    
+
     if not urls:
         print("No URLs found in file")
         sys.exit(1)
